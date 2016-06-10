@@ -229,6 +229,8 @@ func clear():
 			c.set_text("")
 	get_node("BriefDesc").set_text("")
 	get_node("Desc").set_text("")
+	get_node("MethodsList/Selected").set_text("")
+	_method_changed("")
 
 func clear_methods_list():
 	methods_list.clear()
@@ -268,6 +270,7 @@ func _save_class():
 		popup("Failed to save \nclasses.xml isn't open?!","Failed to save")
 		return
 	print("    Saving class to \"user://class.xml\"...")
+	get_node("MethodCreator").save_method()
 	if save_class_as_xml() != OK:
 		popup("Failed to save")
 		return
@@ -278,12 +281,12 @@ func _save_class():
 	var class_buffer = fclass.get_buffer( fclass.get_len() )
 	file.seek(0) # it should be at 0, but just in=case
 	var file_buffer = file.get_buffer( file.get_len() )
-	print("        ",OS.get_ticks_msec()-timestamp,"ms");timestamp = OS.get_ticks_msec()
+	print("        ",OS.get_ticks_msec()-timestamp,"ms")
 	print("    Merging buffers...")
+	yield(get_tree(),"idle_frame")
+	timestamp = OS.get_ticks_msec()
 	var class_start = foffset+1
 	var class_end = get_class_end_offset() + "</class>".length() + 1
-	print("class_start=",class_start)
-	print("class_end=",class_end)
 	var merged_buffer = RawArray()
 	for i in range(class_start):
 		merged_buffer.push_back(file_buffer[i])
@@ -293,12 +296,13 @@ func _save_class():
 	#</class>
 	for i in range(class_end,file_buffer.size()):
 		merged_buffer.push_back(file_buffer[i])
+	print("        ",OS.get_ticks_msec()-timestamp,"ms");timestamp = OS.get_ticks_msec()
+	print("    Saving file...")
 	file.close()
 	file.open(fpath,File.WRITE) # gotta add error checking, "just in=case" :P
 	file.store_buffer( merged_buffer )
 	file.close()
 	file.open(fpath,File.READ) # keep the file open = prevent deleting
-	
 	print("        ",OS.get_ticks_msec()-timestamp,"ms")
 	print("    Saving done")
 	print("------------------------------")
@@ -405,6 +409,7 @@ func _go_back():
 	print("==============================")
 	if file.is_open():
 		file.close()
+	get_node("MethodCreator").hide()
 	hide()
 	get_node("../ClassLoader").show()
 
