@@ -1,0 +1,228 @@
+[gd_scene load_steps=3 format=1]
+
+[ext_resource path="res://class_loader.gd" type="Script" id=1]
+
+[sub_resource type="GDScript" id=1]
+
+script/source = "extends Control\n\nvar gap_size = 5\n\n\nfunc _ready():\n\tresort()\n#\tfor i in range(10):\n#\t\tvar button = Button.new()\n#\t\tadd_button(button)\n\nfunc resort():\n\tyield(get_tree(),\"idle_frame\")\n\tvar pos_y = 0\n\tfor i in range(get_child_count()):\n\t\tvar button = get_child(i)\n\t\tbutton.set_pos( Vector2(0,pos_y) )\n\t\tpos_y += button.get_size().y + gap_size\n\tif pos_y > gap_size:\n\t\tpos_y -= gap_size\n\tset_custom_minimum_size(Vector2(get_size().x,pos_y))\n\t\n\nfunc _button_pressed(name):\n\tget_node(\"../../Selected\").set_text(name) # ClassList/Selected\n\tget_node(\"../../..\")._classname_changed(name) # 3x get_parent() = ClassLoader\n\nfunc add_button( name ):\n\tvar button = Button.new()\n\t#var ccreator = get_node(\"/root/ClassCreator\")\n\tname = str(name)\n\tbutton.set_text(name)\n\tbutton.set_size(Vector2(get_size().x-2,19))\n\tvar i = get_child_count()\n\tbutton.set_pos(Vector2(0,19*i+(gap_size-1)*i))\n\tadd_child(button)\n\tbutton.connect(\"pressed\",self,\"_button_pressed\",[name])\n\t\n\tset_custom_minimum_size( Vector2(get_size().x, button.get_pos().y+button.get_size().y) )\n\nfunc clear():\n\tfor c in get_children():\n\t\tc.queue_free()\n\tset_custom_minimum_size(Vector2(get_size().x,0))\n"
+
+[node name="ClassLoader" type="Control"]
+
+focus/ignore_mouse = false
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+script/script = ExtResource( 1 )
+__meta__ = { "__editor_plugin_screen__":"Script" }
+
+[node name="FileDialog" type="FileDialog" parent="."]
+
+visibility/visible = false
+margin/left = 40.0
+margin/top = 20.0
+margin/right = 980.0
+margin/bottom = 580.0
+focus/ignore_mouse = false
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+popup/exclusive = true
+window/title = "Save a File"
+dialog/hide_on_ok = false
+
+[node name="File" type="Panel" parent="."]
+
+visibility/self_opacity = 0.3
+margin/left = 20.0
+margin/top = 20.0
+margin/right = 420.0
+margin/bottom = 360.0
+focus/ignore_mouse = false
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+
+[node name="Select" type="Button" parent="File"]
+
+margin/left = 80.0
+margin/top = 80.0
+margin/right = 320.0
+margin/bottom = 140.0
+focus/ignore_mouse = false
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+toggle_mode = false
+text = "Select classes.xml file"
+flat = false
+
+[node name="Path" type="LineEdit" parent="File"]
+
+margin/left = 20.0
+margin/top = 180.0
+margin/right = 380.0
+margin/bottom = 203.0
+focus/ignore_mouse = false
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+text = ""
+max_length = 0
+editable = false
+secret = false
+__meta__ = { "_editor_collapsed":true }
+
+[node name="Label" type="Label" parent="File/Path"]
+
+margin/left = 100.0
+margin/top = -20.0
+margin/right = 260.0
+focus/ignore_mouse = true
+focus/stop_mouse = true
+size_flags/horizontal = 2
+text = "Selected File"
+align = 1
+valign = 1
+percent_visible = 1.0
+lines_skipped = 0
+max_lines_visible = -1
+
+[node name="Load" type="Button" parent="File"]
+
+margin/left = 100.0
+margin/top = 240.0
+margin/right = 300.0
+margin/bottom = 300.0
+focus/ignore_mouse = false
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+disabled = true
+toggle_mode = false
+text = "Load Classes"
+flat = false
+
+[node name="Label" type="Label" parent="File"]
+
+margin/left = 40.0
+margin/top = 20.0
+margin/right = 360.0
+margin/bottom = 40.0
+focus/ignore_mouse = true
+focus/stop_mouse = true
+size_flags/horizontal = 2
+text = "File Selector"
+align = 1
+valign = 1
+percent_visible = 1.0
+lines_skipped = 0
+max_lines_visible = -1
+
+[node name="ClassList" type="Panel" parent="."]
+
+visibility/visible = false
+visibility/self_opacity = 0.3
+margin/left = 460.0
+margin/top = 20.0
+margin/right = 820.0
+margin/bottom = 560.0
+focus/ignore_mouse = false
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+
+[node name="Label" type="Label" parent="ClassList"]
+
+margin/left = 40.0
+margin/top = 20.0
+margin/right = 320.0
+margin/bottom = 40.0
+focus/ignore_mouse = true
+focus/stop_mouse = true
+size_flags/horizontal = 2
+text = "Class List"
+align = 1
+valign = 1
+percent_visible = 1.0
+lines_skipped = 0
+max_lines_visible = -1
+
+[node name="Panel" type="Panel" parent="ClassList"]
+
+margin/left = 40.0
+margin/top = 40.0
+margin/right = 320.0
+margin/bottom = 420.0
+focus/ignore_mouse = false
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+
+[node name="C" type="ScrollContainer" parent="ClassList"]
+
+margin/left = 45.0
+margin/top = 45.0
+margin/right = 320.0
+margin/bottom = 415.0
+focus/ignore_mouse = false
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+scroll/horizontal = true
+scroll/vertical = true
+
+[node name="Control" type="Control" parent="ClassList/C"]
+
+margin/right = 262.0
+rect/min_size = Vector2( 262, 0 )
+focus/ignore_mouse = true
+focus/stop_mouse = false
+size_flags/horizontal = 2
+size_flags/vertical = 2
+script/script = SubResource( 1 )
+
+[node name="Load" type="Button" parent="ClassList"]
+
+margin/left = 20.0
+margin/top = 450.0
+margin/right = 140.0
+margin/bottom = 490.0
+focus/ignore_mouse = false
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+disabled = true
+toggle_mode = false
+text = "Edit Class"
+flat = false
+
+[node name="Selected" type="LineEdit" parent="ClassList"]
+
+margin/left = 160.0
+margin/top = 460.0
+margin/right = 340.0
+margin/bottom = 483.0
+focus/ignore_mouse = false
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+text = ""
+max_length = 0
+editable = true
+secret = false
+
+[node name="Label" type="Label" parent="ClassList/Selected"]
+
+margin/top = -20.0
+margin/right = 180.0
+focus/ignore_mouse = true
+focus/stop_mouse = true
+size_flags/horizontal = 2
+text = "Selected Class"
+align = 1
+valign = 1
+percent_visible = 1.0
+lines_skipped = 0
+max_lines_visible = -1
+
+

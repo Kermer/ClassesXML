@@ -1,0 +1,768 @@
+[gd_scene load_steps=5 format=1]
+
+[ext_resource path="res://class_creator.gd" type="Script" id=1]
+[ext_resource path="res://method_creator.gd" type="Script" id=2]
+
+[sub_resource type="GDScript" id=1]
+
+script/source = "extends Control\n\nvar gap_size = 5\n\n\nfunc _ready():\n\tresort()\n#\tfor i in range(10):\n#\t\tvar button = Button.new()\n#\t\tadd_button(button)\n\nfunc scroll_down():\n\tyield(get_tree(),\"idle_frame\")\n\tget_parent().set_v_scroll( get_custom_minimum_size().y )\n\nfunc resort():\n\tyield(get_tree(),\"idle_frame\")\n\tvar pos_y = 0\n\tfor i in range(get_child_count()):\n\t\tvar button = get_child(i)\n\t\tbutton.set_pos( Vector2(0,pos_y) )\n\t\tpos_y += button.get_size().y + gap_size\n\tif pos_y > gap_size:\n\t\tpos_y -= gap_size\n\tset_custom_minimum_size(Vector2(get_size().x,pos_y))\n\nfunc _button_pressed( method_name ):\n\tget_node(\"../../Selected\").set_text(method_name) # MethodsList/Selected\n\tget_node(\"../../..\")._method_changed(method_name) # ClassCreator\n\nfunc add_button( method_name ):\n\tvar button = Button.new()\n\tmethod_name = str(method_name)\n\tbutton.set_name(method_name)\n\tbutton.set_text(method_name)\n\tbutton.set_size(Vector2(get_size().x-2,19))\n\tvar i = get_child_count()\n\tbutton.set_pos(Vector2(0,19*i+(gap_size-1)*i))\n\tadd_child(button)\n\tbutton.connect(\"pressed\",self,\"_button_pressed\",[method_name])\n\t\n\tset_custom_minimum_size( Vector2(get_size().x, button.get_pos().y+button.get_size().y) )\n\nfunc clear():\n\tfor c in get_children():\n\t\tc.queue_free()\n\tset_custom_minimum_size(Vector2(get_size().x,0))\n\nfunc delete_button( mname ):\n\tget_node(mname).queue_free()\n\tcall_deferred(\"resort\") # waiting 2 frames total, just in-case\n"
+
+[sub_resource type="GDScript" id=2]
+
+script/source = "extends Panel\n\nfunc _ready():\n\tconnect(\"visibility_changed\",self,\"_vis_changed\")\n\nfunc _input(event):\n\tif is_hidden():\n\t\treturn\n\tvar mouse_click = (event.type == InputEvent.MOUSE_BUTTON and event.is_pressed())\n\tvar enter_press = (event.type == InputEvent.KEY and (event.scancode == KEY_ENTER or event.scancode == KEY_RETURN))\n\tif mouse_click:\n\t\tvar own_rect = Rect2(get_global_pos()-Vector2(0,23),get_size()+Vector2(0,23)) # + LineEdit (BriefDesc/Desc)\n\t\tif !own_rect.has_point( event.pos ):\n\t\t\thide()\n\telif enter_press:\n\t\thide()\n\nfunc _vis_changed():\n\tif is_hidden():\n\t\tset_process_input(false)\n\telse:\n\t\tset_process_input(true)\n\nfunc resize( width ):\n\tvar size = get_size()\n\tif size.x == width:\n\t\treturn\n\tsize.x = width\n\tset_size(size)\n\tsize -= Vector2(10,10)\n\tget_node(\"Text\").set_size(size)"
+
+[node name="ClassCreator" type="Panel"]
+
+visibility/self_opacity = 0.3
+margin/left = 20.0
+margin/top = 20.0
+margin/right = 560.0
+margin/bottom = 580.0
+focus/ignore_mouse = true
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+script/script = ExtResource( 1 )
+__meta__ = { "__editor_plugin_screen__":"Script" }
+
+[node name="Title" type="Label" parent="."]
+
+margin/left = 20.0
+margin/top = 10.0
+margin/right = 520.0
+margin/bottom = 40.0
+focus/ignore_mouse = true
+focus/stop_mouse = false
+size_flags/horizontal = 2
+text = "Class Creator"
+align = 1
+valign = 1
+percent_visible = 1.0
+lines_skipped = 0
+max_lines_visible = -1
+
+[node name="ClassNode" type="Control" parent="."]
+
+focus/ignore_mouse = true
+focus/stop_mouse = false
+size_flags/horizontal = 2
+size_flags/vertical = 2
+__meta__ = { "_editor_collapsed":true }
+
+[node name="Name" type="LineEdit" parent="ClassNode"]
+
+margin/left = 120.0
+margin/top = 60.0
+margin/right = 500.0
+margin/bottom = 83.0
+focus/ignore_mouse = false
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+text = ""
+max_length = 0
+editable = false
+secret = false
+__meta__ = { "_editor_collapsed":true }
+
+[node name="Label" type="Label" parent="ClassNode/Name"]
+
+margin/left = -100.0
+margin/right = -5.0
+margin/bottom = 20.0
+focus/ignore_mouse = true
+focus/stop_mouse = false
+size_flags/horizontal = 2
+text = "class name = "
+align = 2
+valign = 1
+percent_visible = 1.0
+lines_skipped = 0
+max_lines_visible = -1
+
+[node name="Inherits" type="LineEdit" parent="ClassNode"]
+
+margin/left = 120.0
+margin/top = 85.0
+margin/right = 500.0
+margin/bottom = 108.0
+focus/ignore_mouse = false
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+text = ""
+max_length = 0
+editable = true
+secret = false
+__meta__ = { "_editor_collapsed":true }
+
+[node name="Label" type="Label" parent="ClassNode/Inherits"]
+
+margin/left = -100.0
+margin/right = -5.0
+margin/bottom = 20.0
+focus/ignore_mouse = true
+focus/stop_mouse = false
+size_flags/horizontal = 2
+text = "inherits = "
+align = 2
+valign = 1
+percent_visible = 1.0
+lines_skipped = 0
+max_lines_visible = -1
+
+[node name="Category" type="LineEdit" parent="ClassNode"]
+
+margin/left = 120.0
+margin/top = 110.0
+margin/right = 500.0
+margin/bottom = 133.0
+focus/ignore_mouse = false
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+text = ""
+max_length = 0
+editable = true
+secret = false
+__meta__ = { "_editor_collapsed":true }
+
+[node name="Label" type="Label" parent="ClassNode/Category"]
+
+margin/left = -100.0
+margin/right = -5.0
+margin/bottom = 20.0
+focus/ignore_mouse = true
+focus/stop_mouse = false
+size_flags/horizontal = 2
+text = "category = "
+align = 2
+valign = 1
+percent_visible = 1.0
+lines_skipped = 0
+max_lines_visible = -1
+
+[node name="BriefDesc" type="LineEdit" parent="."]
+
+margin/left = 120.0
+margin/top = 155.0
+margin/right = 500.0
+margin/bottom = 178.0
+focus/ignore_mouse = false
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+text = ""
+max_length = 0
+editable = true
+secret = false
+__meta__ = { "_editor_collapsed":true }
+
+[node name="Label" type="Label" parent="BriefDesc"]
+
+margin/left = -105.0
+margin/right = -5.0
+margin/bottom = 20.0
+focus/ignore_mouse = true
+focus/stop_mouse = false
+size_flags/horizontal = 2
+text = "Brief Description:"
+align = 2
+valign = 1
+percent_visible = 1.0
+lines_skipped = 0
+max_lines_visible = -1
+
+[node name="Desc" type="LineEdit" parent="."]
+
+margin/left = 120.0
+margin/top = 180.0
+margin/right = 500.0
+margin/bottom = 203.0
+focus/ignore_mouse = false
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+text = ""
+max_length = 0
+editable = true
+secret = false
+__meta__ = { "_editor_collapsed":true }
+
+[node name="Label" type="Label" parent="Desc"]
+
+margin/left = -100.0
+margin/right = -5.0
+margin/bottom = 20.0
+focus/ignore_mouse = true
+focus/stop_mouse = false
+size_flags/horizontal = 2
+text = "Description: "
+align = 2
+valign = 1
+percent_visible = 1.0
+lines_skipped = 0
+max_lines_visible = -1
+
+[node name="MethodsList" type="Panel" parent="."]
+
+margin/left = 20.0
+margin/top = 240.0
+margin/right = 300.0
+margin/bottom = 540.0
+focus/ignore_mouse = false
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+
+[node name="Label" type="Label" parent="MethodsList"]
+
+margin/top = -20.0
+margin/right = 280.0
+focus/ignore_mouse = true
+focus/stop_mouse = false
+size_flags/horizontal = 2
+text = "Methods List"
+align = 1
+valign = 1
+percent_visible = 1.0
+lines_skipped = 0
+max_lines_visible = -1
+
+[node name="Selected" type="LineEdit" parent="MethodsList"]
+
+margin/left = 300.0
+margin/top = 40.0
+margin/right = 500.0
+margin/bottom = 63.0
+focus/ignore_mouse = false
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+text = ""
+max_length = 0
+editable = true
+secret = false
+__meta__ = { "_editor_collapsed":true }
+
+[node name="Label" type="Label" parent="MethodsList/Selected"]
+
+margin/top = -20.0
+margin/right = 200.0
+focus/ignore_mouse = true
+focus/stop_mouse = false
+size_flags/horizontal = 2
+text = "Method Name"
+align = 1
+valign = 1
+percent_visible = 1.0
+lines_skipped = 0
+max_lines_visible = -1
+
+[node name="C" type="ScrollContainer" parent="MethodsList"]
+
+margin/left = 5.0
+margin/top = 5.0
+margin/right = 275.0
+margin/bottom = 295.0
+focus/ignore_mouse = false
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+scroll/horizontal = true
+scroll/vertical = true
+
+[node name="Control" type="Control" parent="MethodsList/C"]
+
+margin/right = 257.0
+rect/min_size = Vector2( 257, 0 )
+focus/ignore_mouse = true
+focus/stop_mouse = false
+size_flags/horizontal = 2
+size_flags/vertical = 2
+script/script = SubResource( 1 )
+
+[node name="BAdd" type="Button" parent="MethodsList"]
+
+margin/left = 320.0
+margin/top = 80.0
+margin/right = 480.0
+margin/bottom = 120.0
+focus/ignore_mouse = false
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+disabled = true
+toggle_mode = false
+text = "Create Method"
+flat = false
+
+[node name="BDel" type="Button" parent="MethodsList"]
+
+margin/left = 320.0
+margin/top = 140.0
+margin/right = 480.0
+margin/bottom = 180.0
+focus/ignore_mouse = false
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+disabled = true
+toggle_mode = false
+text = "Delete Method"
+flat = false
+
+[node name="BUndo" type="Button" parent="MethodsList"]
+
+visibility/visible = false
+margin/left = 320.0
+margin/top = 200.0
+margin/right = 480.0
+margin/bottom = 240.0
+focus/ignore_mouse = false
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+disabled = true
+toggle_mode = false
+text = "Undo Delete"
+flat = false
+
+[node name="MethodCreator" type="Panel" parent="."]
+
+visibility/visible = false
+visibility/self_opacity = 0.3
+margin/left = 560.0
+margin/right = 980.0
+margin/bottom = 480.0
+focus/ignore_mouse = false
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+script/script = ExtResource( 2 )
+__meta__ = { "_editor_collapsed":true }
+
+[node name="Title" type="Label" parent="MethodCreator"]
+
+margin/left = 20.0
+margin/top = 10.0
+margin/right = 400.0
+margin/bottom = 40.0
+focus/ignore_mouse = true
+focus/stop_mouse = false
+size_flags/horizontal = 2
+text = "Method Creator"
+align = 1
+valign = 1
+percent_visible = 1.0
+lines_skipped = 0
+max_lines_visible = -1
+
+[node name="Name" type="LineEdit" parent="MethodCreator"]
+
+margin/left = 120.0
+margin/top = 60.0
+margin/right = 380.0
+margin/bottom = 83.0
+focus/ignore_mouse = false
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+text = ""
+max_length = 0
+editable = false
+secret = false
+__meta__ = { "_editor_collapsed":true }
+
+[node name="Label" type="Label" parent="MethodCreator/Name"]
+
+margin/left = -100.0
+margin/right = -5.0
+margin/bottom = 20.0
+focus/ignore_mouse = true
+focus/stop_mouse = false
+size_flags/horizontal = 2
+text = "method name = "
+align = 2
+valign = 1
+percent_visible = 1.0
+lines_skipped = 0
+max_lines_visible = -1
+
+[node name="ReturnType" type="LineEdit" parent="MethodCreator"]
+
+margin/left = 120.0
+margin/top = 85.0
+margin/right = 380.0
+margin/bottom = 108.0
+focus/ignore_mouse = false
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+text = ""
+max_length = 0
+editable = true
+secret = false
+__meta__ = { "_editor_collapsed":true }
+
+[node name="Label" type="Label" parent="MethodCreator/ReturnType"]
+
+margin/left = -100.0
+margin/right = -5.0
+margin/bottom = 20.0
+focus/ignore_mouse = true
+focus/stop_mouse = false
+size_flags/horizontal = 2
+text = "return type = "
+align = 2
+valign = 1
+percent_visible = 1.0
+lines_skipped = 0
+max_lines_visible = -1
+
+[node name="Qualifiers" type="LineEdit" parent="MethodCreator"]
+
+margin/left = 120.0
+margin/top = 110.0
+margin/right = 380.0
+margin/bottom = 133.0
+focus/ignore_mouse = false
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+text = ""
+max_length = 0
+editable = true
+secret = false
+__meta__ = { "_editor_collapsed":true }
+
+[node name="Label" type="Label" parent="MethodCreator/Qualifiers"]
+
+margin/left = -100.0
+margin/right = -5.0
+margin/bottom = 20.0
+focus/ignore_mouse = true
+focus/stop_mouse = false
+size_flags/horizontal = 2
+text = "qualifiers = "
+align = 2
+valign = 1
+percent_visible = 1.0
+lines_skipped = 0
+max_lines_visible = -1
+
+[node name="Desc" type="LineEdit" parent="MethodCreator"]
+
+margin/left = 120.0
+margin/top = 160.0
+margin/right = 380.0
+margin/bottom = 183.0
+focus/ignore_mouse = false
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+text = ""
+max_length = 0
+editable = true
+secret = false
+__meta__ = { "_editor_collapsed":true }
+
+[node name="Label" type="Label" parent="MethodCreator/Desc"]
+
+margin/left = -100.0
+margin/right = -5.0
+margin/bottom = 20.0
+focus/ignore_mouse = true
+focus/stop_mouse = false
+size_flags/horizontal = 2
+text = "Description: "
+align = 2
+valign = 1
+percent_visible = 1.0
+lines_skipped = 0
+max_lines_visible = -1
+
+[node name="Arg0" type="LineEdit" parent="MethodCreator"]
+
+margin/left = 120.0
+margin/top = 220.0
+margin/right = 380.0
+margin/bottom = 243.0
+focus/ignore_mouse = false
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+text = ""
+max_length = 0
+editable = true
+secret = false
+__meta__ = { "_editor_collapsed":true }
+
+[node name="Label" type="Label" parent="MethodCreator/Arg0"]
+
+margin/left = -100.0
+margin/bottom = 20.0
+focus/ignore_mouse = true
+focus/stop_mouse = false
+size_flags/horizontal = 2
+text = "arg0          name ="
+valign = 1
+percent_visible = 1.0
+lines_skipped = 0
+max_lines_visible = -1
+
+[node name="Type" type="LineEdit" parent="MethodCreator/Arg0"]
+
+margin/top = 25.0
+margin/right = 260.0
+margin/bottom = 48.0
+focus/ignore_mouse = false
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+text = ""
+max_length = 0
+editable = true
+secret = false
+
+[node name="Label" type="Label" parent="MethodCreator/Arg0/Type"]
+
+margin/left = -100.0
+margin/bottom = 20.0
+focus/ignore_mouse = true
+focus/stop_mouse = false
+size_flags/horizontal = 2
+text = "type = "
+align = 2
+valign = 1
+percent_visible = 1.0
+lines_skipped = 0
+max_lines_visible = -1
+
+[node name="Arg1" type="LineEdit" parent="MethodCreator"]
+
+margin/left = 120.0
+margin/top = 280.0
+margin/right = 380.0
+margin/bottom = 303.0
+focus/ignore_mouse = false
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+text = ""
+max_length = 0
+editable = true
+secret = false
+__meta__ = { "_editor_collapsed":true }
+
+[node name="Label" type="Label" parent="MethodCreator/Arg1"]
+
+margin/left = -100.0
+margin/bottom = 20.0
+focus/ignore_mouse = true
+focus/stop_mouse = false
+size_flags/horizontal = 2
+text = "arg1          name ="
+valign = 1
+percent_visible = 1.0
+lines_skipped = 0
+max_lines_visible = -1
+
+[node name="Type" type="LineEdit" parent="MethodCreator/Arg1"]
+
+margin/top = 25.0
+margin/right = 260.0
+margin/bottom = 48.0
+focus/ignore_mouse = false
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+text = ""
+max_length = 0
+editable = true
+secret = false
+
+[node name="Label" type="Label" parent="MethodCreator/Arg1/Type"]
+
+margin/left = -100.0
+margin/bottom = 20.0
+focus/ignore_mouse = true
+focus/stop_mouse = false
+size_flags/horizontal = 2
+text = "type = "
+align = 2
+valign = 1
+percent_visible = 1.0
+lines_skipped = 0
+max_lines_visible = -1
+
+[node name="Arg2" type="LineEdit" parent="MethodCreator"]
+
+margin/left = 120.0
+margin/top = 340.0
+margin/right = 380.0
+margin/bottom = 363.0
+focus/ignore_mouse = false
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+text = ""
+max_length = 0
+editable = true
+secret = false
+__meta__ = { "_editor_collapsed":true }
+
+[node name="Label" type="Label" parent="MethodCreator/Arg2"]
+
+margin/left = -100.0
+margin/bottom = 20.0
+focus/ignore_mouse = true
+focus/stop_mouse = false
+size_flags/horizontal = 2
+text = "arg2          name ="
+valign = 1
+percent_visible = 1.0
+lines_skipped = 0
+max_lines_visible = -1
+
+[node name="Type" type="LineEdit" parent="MethodCreator/Arg2"]
+
+margin/top = 25.0
+margin/right = 260.0
+margin/bottom = 48.0
+focus/ignore_mouse = false
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+text = ""
+max_length = 0
+editable = true
+secret = false
+
+[node name="Label" type="Label" parent="MethodCreator/Arg2/Type"]
+
+margin/left = -100.0
+margin/bottom = 20.0
+focus/ignore_mouse = true
+focus/stop_mouse = false
+size_flags/horizontal = 2
+text = "type = "
+align = 2
+valign = 1
+percent_visible = 1.0
+lines_skipped = 0
+max_lines_visible = -1
+
+[node name="Arg3" type="LineEdit" parent="MethodCreator"]
+
+margin/left = 120.0
+margin/top = 400.0
+margin/right = 380.0
+margin/bottom = 423.0
+focus/ignore_mouse = false
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+text = ""
+max_length = 0
+editable = true
+secret = false
+__meta__ = { "_editor_collapsed":true }
+
+[node name="Label" type="Label" parent="MethodCreator/Arg3"]
+
+margin/left = -100.0
+margin/bottom = 20.0
+focus/ignore_mouse = true
+focus/stop_mouse = false
+size_flags/horizontal = 2
+text = "arg3          name ="
+valign = 1
+percent_visible = 1.0
+lines_skipped = 0
+max_lines_visible = -1
+
+[node name="Type" type="LineEdit" parent="MethodCreator/Arg3"]
+
+margin/top = 25.0
+margin/right = 260.0
+margin/bottom = 48.0
+focus/ignore_mouse = false
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+text = ""
+max_length = 0
+editable = true
+secret = false
+
+[node name="Label" type="Label" parent="MethodCreator/Arg3/Type"]
+
+margin/left = -100.0
+margin/bottom = 20.0
+focus/ignore_mouse = true
+focus/stop_mouse = false
+size_flags/horizontal = 2
+text = "type = "
+align = 2
+valign = 1
+percent_visible = 1.0
+lines_skipped = 0
+max_lines_visible = -1
+
+[node name="BSave" type="Button" parent="."]
+
+margin/left = 580.0
+margin/top = 520.0
+margin/right = 740.0
+margin/bottom = 560.0
+focus/ignore_mouse = false
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+toggle_mode = false
+text = "Save Class"
+flat = false
+
+[node name="BBack" type="Button" parent="."]
+
+margin/left = 800.0
+margin/top = 520.0
+margin/right = 960.0
+margin/bottom = 560.0
+focus/ignore_mouse = false
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+toggle_mode = false
+text = "Return To ClassList"
+flat = false
+
+[node name="DescOverflow" type="Panel" parent="."]
+
+visibility/visible = false
+margin/left = 120.0
+margin/top = 200.0
+margin/right = 500.0
+margin/bottom = 340.0
+focus/ignore_mouse = false
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+script/script = SubResource( 2 )
+
+[node name="Text" type="RichTextLabel" parent="DescOverflow"]
+
+margin/left = 5.0
+margin/top = 5.0
+margin/right = 375.0
+margin/bottom = 135.0
+focus/ignore_mouse = false
+focus/stop_mouse = true
+size_flags/horizontal = 2
+size_flags/vertical = 2
+bbcode/enabled = false
+bbcode/bbcode = ""
+visible_characters = -1
+
+
