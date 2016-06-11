@@ -72,6 +72,6 @@ func save_method():
 		method.args[i] = arg
 	
 	# "method" is a reference so there's no need for the line below
-#	get_parent().methods_list[ method.name ] = method
+	#get_parent().methods_list[ method.name ] = method
 
 

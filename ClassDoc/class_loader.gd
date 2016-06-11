@@ -3,6 +3,7 @@ extends Node
 
 onready var fdialog = get_node("FileDialog")
 var class_list = {}
+var class_array = []
 
 
 func _ready():
@@ -26,6 +27,7 @@ func _file_selected( path ):
 	get_node("File/Load").set_disabled(false)
 
 func _load_classes():
+	clear_classes()
 	var fpath = get_node("File/Path").get_text()
 	Config.set_filepath(fpath.get_base_dir())
 	var f = File.new()
@@ -45,7 +47,6 @@ func _load_classes():
 		return
 	print("Loading classes from \"",fpath,"\"...")
 	var timestamp = OS.get_ticks_msec()
-	clear_class_list()
 	xml.read() # <?xml version
 	xml.read() # <doc version
 	var i = 0
@@ -55,8 +56,8 @@ func _load_classes():
 			break
 		if xml.get_node_type() == xml.NODE_ELEMENT and xml.get_node_name() == "class":
 			if xml.has_attribute("name"):
-				class_list[ xml.get_named_attribute_value("name") ] = xml.get_node_offset()
-				xml.skip_section()
+				new_class( xml.get_named_attribute_value("name"), xml.get_node_offset() )
+				xml.skip_section() # </class>
 			# else: error handling?
 		else:
 			xml.read()
@@ -65,15 +66,20 @@ func _load_classes():
 	
 	yield(get_tree(),"idle_frame") # wait 1 frame, so previous buttons have time to be deleted
 	var container = get_node("ClassList/C/Control")
-	for class_name in class_list:
+	for class_name in class_array:
 		container.add_button(class_name)
 	
 	get_node("ClassList").show()
 	
 	f.close()
 
-func clear_class_list():
+func new_class(name,coffset=-1):
+	class_list[name] = coffset
+	class_array.append( name )
+
+func clear_classes():
 	class_list.clear()
+	class_array.clear()
 	get_node("ClassList/C/Control").clear()
 
 func _classname_changed( nval ):
@@ -95,6 +101,7 @@ func _load_class():
 		class_creator.set_class(fpath,cname,class_list[cname])
 	else:
 		class_creator.set_class(fpath,cname)
+		popup("Adding new classes not available yet :(\nYou won't be able to save it")
 	class_creator.show()
 
 

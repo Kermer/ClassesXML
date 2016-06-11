@@ -1,40 +1,23 @@
 extends Panel
 
 
-#var name = ""
-#var inherits = ""
-#var brief_desc = ""
-#var desc = ""
-#
-#var methods = []
-#
-#var methods_list
+var file = File.new() # global - to keep the file open why creator is running (to prevent deleting the file)
+var fpath = "" # file path
+var foffset = -1 # where our edited <class> tag starts in the .xml file
 
+var methods_list = {} # for quick "by name" selection
+var methods_array = [] # to keep the order when saving
+var constants_list = {} # for quick "by name" selection
+var constants_array = [] # to keep the order when saving
 
-
-
-
-
-
-
-
-
-var file = File.new()
-var fpath = ""
-var foffset = -1
-var fendoffset = -1
-
-var methods_list = {}
-var constants = {}
-
+var has_saved = false # should we reload ClassList when we go back?
 
 
 func _ready():
+	# trigger show & update Description Overflow panel below currently edited description
 	get_node("BriefDesc").connect("focus_enter",self,"_show_desc_overflow",[get_node("BriefDesc")])
-#	get_node("BriefDesc").connect("focus_exit",self,"_hide_desc_overflow")
 	get_node("BriefDesc").connect("text_changed",self,"_desc_updated",[get_node("BriefDesc")])
 	get_node("Desc").connect("focus_enter",self,"_show_desc_overflow",[get_node("Desc")])
-#	get_node("Desc").connect("focus_exit",self,"_hide_desc_overflow")
 	get_node("Desc").connect("text_changed",self,"_desc_updated",[get_node("Desc")])
 	
 	get_node("MethodsList/BAdd").connect("pressed",self,"_edit_method")
@@ -43,7 +26,7 @@ func _ready():
 	
 	get_node("BSave").connect("pressed",self,"_save_class")
 	get_node("BBack").connect("pressed",self,"_go_back")
-	pass
+
 
 func set_class(fpath,cname,file_offset=-1):
 	clear()
@@ -111,9 +94,8 @@ func load_class_data(fpath, foffset):
 			elif current_node == "methods":
 				if xml.get_node_name() == "method":
 					current_node = "method"
-					var method = new_method()
-					method.name = xml.get_named_attribute_value("name")
-					method.offset = xml.get_node_offset()
+					var mname = xml.get_named_attribute_value("name")
+					var method = new_method(mname)
 					if xml.has_attribute("qualifiers"):
 						method.qualifiers = xml.get_named_attribute_value("qualifiers")
 					current_method = method
@@ -124,11 +106,11 @@ func load_class_data(fpath, foffset):
 				elif xml.get_node_name() == "argument":
 					# currently no invalid index checks
 					var idx = xml.get_named_attribute_value("index")
-					var arg = {"name":"arg"+str(idx),"type":"null","default":"null"}
+					var arg = {"name":"arg"+str(idx),"type":""} # ,"default": if specified
 					arg.name = xml.get_named_attribute_value("name")
 					arg.type = xml.get_named_attribute_value("type")
 					if xml.has_attribute("default"):
-						arg.default = xml.get_named_attribute_value("default")
+						arg["default"] = xml.get_named_attribute_value("default")
 					current_method.args.append(arg)
 					xml.read() # </argument>
 				elif xml.get_node_name() == "description":
@@ -138,22 +120,24 @@ func load_class_data(fpath, foffset):
 					xml.read() # </description>
 			elif current_node == "constants":
 				if xml.get_node_name() == "constant":
-					var constant = {"name":"","value":"","desc":""}
-					constant.name = xml.get_named_attribute_value("name")
+					var cname = xml.get_named_attribute_value("name")
+					var constant = new_constant(cname)
 					constant.value = xml.get_named_attribute_value("value")
 					xml.read()
 					if xml.get_node_type() == xml.NODE_TEXT:
 						constant.desc = xml.get_node_data().strip_edges()
 					elif xml.get_node_type() == xml.NODE_ELEMENT_END: # </constant>
 						current_node = "class"
-					constants[constant.name] = constant # Dictionary = in case i'll want to add later option to edit constant's descriptions
+					#constants_list[constant.name] = constant # Dictionary = in case i'll want to add later option to edit constant's descriptions
+					# ^ is now done in new_constant()
 		
 		# </...>
 		elif xml.get_node_type() == xml.NODE_ELEMENT_END:
 			if current_node == xml.get_node_name():
 				if current_node == "method":
 					current_node = "methods"
-					methods_list[ current_method.name ] = current_method # save info about our method
+					#methods_list[ current_method.name ] = current_method # save info about our method
+					# ^ is now done in new_method()
 					current_method = null
 				elif current_node == "methods" or current_node == "constants":
 					# back to class
@@ -164,8 +148,8 @@ func load_class_data(fpath, foffset):
 	print("    Loading done (",OS.get_ticks_msec()-timestamp,"ms)")
 	# Showing our methods list
 	yield(get_tree(),"idle_frame") # wait 1 frame, so previous buttons have time to be deleted
-	for mname in methods_list:
-		get_node("MethodsList/C/Control").add_button(mname)
+	for method in methods_array:
+		get_node("MethodsList/C/Control").add_button(method.name)
 	
 
 func _method_changed(mname):
@@ -189,9 +173,7 @@ func _edit_method():
 	if methods_list.has(mname):
 		method = methods_list[mname]
 	else:
-		method = new_method()
-		method.name = mname
-		methods_list[ mname ] = method
+		method = new_method(mname)
 		get_node("MethodsList/C/Control").add_button(mname)
 		get_node("MethodsList/C/Control").scroll_down()
 	var mcreator = get_node("MethodCreator")
@@ -206,23 +188,53 @@ func _delete_method():
 		return
 	# delete it from our MethodsList
 	get_node("MethodsList/C/Control").delete_button(mname)
+	# delete it from our _list and _array
+	var method = methods_list[mname]
+	var idx = methods_array.find(mname)
+	# if method wasn't created properly debugger will break at .delete_button() above
+	# that's why not checking "idx != -1" here
+	methods_array.remove( idx )
 	methods_list.erase(mname)
 	_method_changed(mname)
 
 
-func new_method():
+func new_method(name):
 	var method = {
-		"name":"",
-		"offset":-1,
+		"name":name,
 		"args":[],
 		"desc":"",
 		"return_type":"void",
 		"qualifiers":""
 		}
+	# overloaded methods (like Array() constructors) support
+#	if methods_list.has(name): # dupe, so most likely overloaded
+#		var overloaded_method = methods_list[name] # get method currently stored in it (see structure above)
+#		if !overloaded_method.has("overloaded"): # not marked as overloaded yet
+#			var m = overloaded_method
+#			overloaded_method = {"name":m.name,"overloaded":true,"methods":[]}
+#			overloaded_method.methods.append(m)
+#		overloaded_method.append(method)
+	# /overloaded
+	methods_list[name] = method
+	methods_array.append( method )
+	# method is actually a reference to Dictionary object
+	# so if we do methods_list[name].desc = "Some desc" it'll also apply to that method in methods_array
 	return method
 
+func new_constant(name):
+	var constant = {
+		"name":name,
+		"value":"",
+		"desc":""
+		}
+	constants_list[name] = constant
+	constants_array.append(constant)
+	# constant is actually a reference to Dictionary object
+	# so if we do constants_list[name].desc = "Some desc" it'll also apply to that constant in constants_array
+	return constant
+
 func clear():
-	clear_methods_list()
+	clear_methods()
 	clear_constants()
 	for c in get_node("ClassNode").get_children():
 		if c extends LineEdit:
@@ -232,11 +244,13 @@ func clear():
 	get_node("MethodsList/Selected").set_text("")
 	_method_changed("")
 
-func clear_methods_list():
+func clear_methods():
 	methods_list.clear()
+	methods_array.clear()
 	get_node("MethodsList/C/Control").clear()
 func clear_constants():
-	constants.clear()
+	constants_list.clear()
+	constants_array.clear()
 
 func set_desc( text, brief=false ):
 	var line_edit
@@ -274,33 +288,32 @@ func _save_class():
 	if save_class_as_xml() != OK:
 		popup("Failed to save")
 		return
-	print("        ",OS.get_ticks_msec()-timestamp,"ms");timestamp = OS.get_ticks_msec()
-	print("    Getting buffers of \"class.xml\" and \"classes.xml\"...")
+	print("        ",OS.get_ticks_msec()-timestamp,"ms");
+	print("    Merging \"class.xml\" and \"classes.xml\" buffers...")
 	var fclass = File.new()
-	fclass.open("user://class.xml",File.READ) # we just wrote to it, so it should be accessible, right?
-	var class_buffer = fclass.get_buffer( fclass.get_len() )
-	file.seek(0) # it should be at 0, but just in=case
-	var file_buffer = file.get_buffer( file.get_len() )
-	print("        ",OS.get_ticks_msec()-timestamp,"ms")
-	print("    Merging buffers...")
+	fclass.open("user://class.xml",File.READ) # we just wrote to it, so it should be accessible, right? Besides... it's "user://"
 	yield(get_tree(),"idle_frame")
 	timestamp = OS.get_ticks_msec()
-	var class_start = foffset+1
-	var class_end = get_class_end_offset() + "</class>".length() + 1
-	var merged_buffer = RawArray()
-	for i in range(class_start):
-		merged_buffer.push_back(file_buffer[i])
-	#<class>
-	for i in range(class_buffer.size()):
-		merged_buffer.push_back(class_buffer[i])
-	#</class>
-	for i in range(class_end,file_buffer.size()):
-		merged_buffer.push_back(file_buffer[i])
+	var class_start = foffset+1 # <class> pos
+	var class_end = get_class_end_offset() + "</class>".length() + 1 # pos after </class>
+	# FILE BUFFERS
+	var buffers = []
+	var class_buffer = fclass.get_buffer( fclass.get_len()-1 )
+	file.seek(0) # it should be at 0, but just in-case
+	var start_buffer = file.get_buffer( class_start )
+	buffers.append( start_buffer ) # file(to <class>)
+	buffers.append( class_buffer ) # class.xml
+	file.seek(class_end)
+	var end_buffer = file.get_buffer( file.get_len()-class_end )
+	buffers.append(end_buffer)
+	# / file buffers
 	print("        ",OS.get_ticks_msec()-timestamp,"ms");timestamp = OS.get_ticks_msec()
 	print("    Saving file...")
 	file.close()
-	file.open(fpath,File.WRITE) # gotta add error checking, "just in=case" :P
-	file.store_buffer( merged_buffer )
+	file.open(fpath,File.WRITE) # add error checking? This file is surely READable, but could be WRITE protected
+	has_saved = true # our "file" content changed so update ClassList when we _go_back()
+	for buffer in buffers:
+		file.store_buffer( buffer ) # buffers: file(to <class>) + class.xml + file(from </class>)
 	file.close()
 	file.open(fpath,File.READ) # keep the file open = prevent deleting
 	print("        ",OS.get_ticks_msec()-timestamp,"ms")
@@ -352,8 +365,7 @@ func save_class_as_xml():
 	#		<methods>
 	line = tab(1)+"<methods>"
 	f.store_line(line)
-	for mname in methods_list:
-		var method = methods_list[mname]
+	for method in methods_array:
 	#			<method name qualifiers>
 		line = tab(2)+"<method name=\""+method.name+"\""
 		if method.qualifiers != "":
@@ -388,8 +400,8 @@ func save_class_as_xml():
 	#		</methods>
 	#		<constants>
 	f.store_line(tab(1)+"<constants>")
-	for cname in constants:
-		var constant = constants[cname]
+	for cname in constants_list:
+		var constant = constants_list[cname]
 	#			<constant name value>
 		line = tab(2)+"<constant name=\""+constant.name+"\" value=\""+constant.value+"\">"
 		f.store_line(line)
@@ -412,6 +424,9 @@ func _go_back():
 	get_node("MethodCreator").hide()
 	hide()
 	get_node("../ClassLoader").show()
+	if has_saved:
+		get_node("../ClassLoader")._load_classes()
+		has_saved = false
 
 func _show_desc_overflow(node):
 	get_node("DescOverflow").set_global_pos( node.get_global_pos() + Vector2(0,node.get_size().y) )
@@ -478,77 +493,4 @@ func get_class_end_offset():
 				xml.skip_section()
 				return xml.get_node_offset()
 		xml.read()
-
-
-
-
-
-
-
-
-
-
-
-# DEPRICATED CODE
-
-#func _export_xml():
-#	var s = ""
-#	var nl = "\n"
-#	var tab = "\t"
-#	# <class>
-#	s += tab+"<class name=\""+name+"\""
-#	if inherits != "":
-#		s += " inherits=\""+inherits+"\""
-#	s += " category=\"Core\">"+nl
-#	#	<brief_description>
-#	s += tab+tab+"<brief_description>"+nl
-#	if brief_desc != "":
-#		s += tab+brief_desc+nl
-#	s += tab+tab+"</brief_description>"+nl
-#	#	</brief_description>
-#	#	<description>
-#	s += tab+tab+"<description>"+nl
-#	if desc != "":
-#		s += tab+desc+nl
-#	s += tab+tab+"</description>"+nl
-#	#	</description>
-#	#	<methods>
-#	s += tab+tab+"<methods>"+nl
-#	for method in methods:
-#	#		<method>
-#		if method.name == "": # skip unnamed
-#			continue
-#		s += tab+tab+tab+"<method name=\""+method.name+"\">"+nl
-#	#			<return_type>
-#		if method.return_type != "":
-#			s += tab+tab+tab+tab+"<return_type=\""+method.return_type+"\"></return_type>"+nl
-#	#			<description>
-#		s += tab+tab+tab+tab+"<description>"+nl
-#		if method.description != "":
-#			s += tab+tab+tab+tab+method.description+nl
-#		s += tab+tab+tab+tab+"</description>"+nl
-#	#			<argument>
-#		var idx = 0
-#		for i in range(method.arg_count):
-#			var arg = method.arguments[i]
-#			if arg.type == "":
-#				#print("Skipping incorrect argument (",i,")")
-#				continue
-#			if arg.name == "":
-#				arg.name == "arg"+str(idx)
-#			s += tab+tab+tab+tab+"<argument index="+str(idx)+" name=\""+arg.name+"\" type=\""+arg.type+"\">"+nl
-#			s += tab+tab+tab+tab+"</argument>"+nl
-#			idx += 1
-#	#			</argument>
-#	s += tab+tab+"</methods>"+nl
-#	#	</methods>
-#	s += tab+"</class>"
-#	# </class>
-#	save_xml(s,"res://test.xml")
-#
-#func save_xml( s, path ):
-#	var f  File.new()
-#	f.open(path,File.WRITE)
-#	f.store_string(s)
-#	f.close()
 
